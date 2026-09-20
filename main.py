@@ -1,24 +1,6 @@
-from fastapi import FastAPI
+from app.main import app
 
-from routers.users import router as users_router
-from routers.products import router as products_router
+if __name__ == "__main__":
+    import uvicorn
 
-
-app = FastAPI(
-    title="FastAPI MySQL API",
-    description="FastAPI API using XAMPP MySQL",
-    version="1.0.0"
-)
-
-
-app.include_router(users_router)
-
-app.include_router(products_router)
-
-
-@app.get("/")
-def home():
-
-    return {
-        "message": "FastAPI is running"
-    }
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)
