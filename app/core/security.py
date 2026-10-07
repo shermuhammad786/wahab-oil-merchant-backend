@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_db
+from app.models.shop import Shop
 from app.models.user import User
 
 settings = get_settings()
@@ -23,21 +24,27 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
-def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
+def create_access_token(
+    subject: str,
+    shop_id: str,
+    role: str = "operator",
+    expires_delta: timedelta | None = None,
+) -> str:
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode: dict[str, Any] = {"sub": subject, "exp": expire}
+    to_encode: dict[str, Any] = {"sub": subject, "shop_id": shop_id, "role": role, "exp": expire}
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def decode_token(token: str) -> str:
+def decode_token(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
-        subject: str | None = payload.get("sub")
-        if subject is None:
-            raise ValueError("Missing subject")
-        return subject
+        if payload.get("sub") is None or payload.get("shop_id") is None:
+            raise ValueError("Missing required token fields")
+        return payload
     except JWTError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
 
 
 def get_current_user(
@@ -48,15 +55,32 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
 
     try:
-        username = decode_token(credentials.credentials)
+        payload = decode_token(credentials.credentials)
     except HTTPException:
         raise
 
-    user = db.query(User).filter(User.email == username).first()
+    user = db.query(User).filter(User.email == payload["sub"]).first()
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
+    if user.shop_id != payload.get("shop_id"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token shop mismatch")
 
+    db.info["shop_id"] = user.shop_id
     return user
+
+
+def get_current_shop(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Shop:
+    shop = db.get(Shop, current_user.shop_id)
+    if shop is None or not shop.is_active:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Shop not found")
+    return shop
+
+
+def get_current_shop_id(current_user: User = Depends(get_current_user)) -> str:
+    return current_user.shop_id
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:

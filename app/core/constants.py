@@ -52,3 +52,10 @@ class ExpenseSubtype(str, Enum):
     OTHER = "Other"
     OTHER_EXPENSE = "Other Expense"
     EXTRA_EXPENSE = "Extra Expense"
+
+
+EXPENSE_SUBTYPES = {
+    ExpenseCategory.HOME.value: frozenset({"Rent", "Utilities", "Maintenance", "Medical", "Education", "Other Expense", "Extra Expense"}),
+    ExpenseCategory.SHOP.value: frozenset({"Salary", "Rent", "Utilities", "Maintenance / Repair", "Other Expense", "Extra Expense"}),
+    ExpenseCategory.POCKET.value: frozenset({"Personal", "Travel", "Food", "Shopping", "Other Expense", "Extra Expense"}),
+}

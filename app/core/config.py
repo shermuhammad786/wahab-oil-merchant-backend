@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
+    WOM_ADMIN_LOGIN: str = "wom@local.test"
+    WOM_ADMIN_PASSWORD: str = "WOMAdmin123!"
+    ABDUL_HAQ_ADMIN_LOGIN: str = "ah@local.test"
+    ABDUL_HAQ_ADMIN_PASSWORD: str = "AHAdmin123!"
+
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     LOG_LEVEL: str = "INFO"
 

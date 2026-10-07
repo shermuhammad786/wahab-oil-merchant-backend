@@ -11,13 +11,13 @@ class SupplierService:
         self.db = db
         self.repo = SupplierRepository(db)
 
-    def get_supplier(self, supplier_id: str) -> Supplier:
-        supplier = self.repo.get_by_id(supplier_id)
+    def get_supplier(self, supplier_id: str, shop_id: str | None = None) -> Supplier:
+        supplier = self.repo.get_by_id(supplier_id, shop_id=shop_id)
         if supplier is None:
             raise NotFoundError("Supplier not found")
         return supplier
 
-    def create_supplier(self, payload: SupplierCreate) -> Supplier:
+    def create_supplier(self, payload: SupplierCreate, shop_id: str | None = None) -> Supplier:
         if not payload.name or not payload.name.strip():
             raise ValidationError("Supplier name is required")
         return self.repo.create(
@@ -26,23 +26,24 @@ class SupplierService:
             address=payload.address,
             opening_balance=payload.opening_balance or 0,
             status=payload.status or "Active",
+            shop_id=shop_id,
         )
 
-    def update_supplier(self, supplier_id: str, payload: SupplierUpdate) -> Supplier:
+    def update_supplier(self, supplier_id: str, payload: SupplierUpdate, shop_id: str | None = None) -> Supplier:
         data = payload.model_dump(exclude_unset=True)
         if payload.name is not None and not payload.name.strip():
             raise ValidationError("Supplier name is required")
-        return self.repo.update(supplier_id, data)
+        return self.repo.update(supplier_id, data, shop_id=shop_id)
 
-    def deactivate_supplier(self, supplier_id: str) -> Supplier:
-        return self.repo.deactivate(supplier_id)
+    def deactivate_supplier(self, supplier_id: str, shop_id: str | None = None) -> Supplier:
+        return self.repo.deactivate(supplier_id, shop_id=shop_id)
 
-    def get_ledger(self, supplier_id: str, from_date: str | None = None, to_date: str | None = None):
-        self.get_supplier(supplier_id)
-        entries = self.repo.ledger_entries(supplier_id, from_date, to_date)
+    def get_ledger(self, supplier_id: str, from_date: str | None = None, to_date: str | None = None, shop_id: str | None = None):
+        self.get_supplier(supplier_id, shop_id=shop_id)
+        entries = self.repo.ledger_entries(supplier_id, from_date, to_date, shop_id=shop_id)
         return {
             "supplier_id": supplier_id,
-            "balance": str(self.repo.get_balance(supplier_id)),
+            "balance": str(self.repo.get_balance(supplier_id, shop_id=shop_id)),
             "entries": [
                 {
                     "id": entry.id,
@@ -59,9 +60,9 @@ class SupplierService:
             ],
         }
 
-    def get_installments(self, supplier_id: str):
-        self.get_supplier(supplier_id)
-        balance = self.repo.get_balance(supplier_id)
+    def get_installments(self, supplier_id: str, shop_id: str | None = None):
+        self.get_supplier(supplier_id, shop_id=shop_id)
+        balance = self.repo.get_balance(supplier_id, shop_id=shop_id)
         return {
             "supplier_id": supplier_id,
             "previous_remaining": "0.00",

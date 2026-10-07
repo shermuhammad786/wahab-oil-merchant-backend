@@ -1,8 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "mysql+pymysql://root:@localhost/fastapi_db"
-
+DATABASE_URL="mysql+pymysql://leositso_shafqat_kazmi:kazmiLeos@144.76.111.139:3306/leositso_wahab_oil_merchant"
 engine = create_engine(
     DATABASE_URL,
     echo=True

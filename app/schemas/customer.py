@@ -26,6 +26,7 @@ class CustomerUpdate(BaseModel):
 
 class CustomerRead(CustomerBase):
     id: str
+    current_balance: Decimal = Decimal("0.00")
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

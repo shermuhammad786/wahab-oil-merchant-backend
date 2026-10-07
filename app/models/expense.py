@@ -12,6 +12,7 @@ class Expense(Base):
     __tablename__ = "expenses"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     subtype: Mapped[str] = mapped_column(String(100), default="Other", nullable=False)
     custom_subtype: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -20,6 +21,7 @@ class Expense(Base):
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     payment_method: Mapped[str] = mapped_column(String(32), default="Cash", nullable=False)
     bank_account_id: Mapped[str | None] = mapped_column(ForeignKey("bank_accounts.id"), nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
     reference: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

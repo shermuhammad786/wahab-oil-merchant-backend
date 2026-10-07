@@ -20,19 +20,24 @@ def list_suppliers(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> list[SupplierRead]:
-    items = SupplierRepository(db).list(search=search or "", status=status or "", page=page, page_size=page_size)
-    return [SupplierRead.model_validate(item) for item in items]
+    items = SupplierRepository(db).list(search=search or "", status=status or "", page=page, page_size=page_size, shop_id=current_user.shop_id)
+    service = SupplierService(db)
+    return [SupplierRead.model_validate(item).model_copy(update={"current_balance": service.repo.get_balance(item.id, shop_id=current_user.shop_id)}) for item in items]
 
 
 @router.post("", response_model=SupplierRead, status_code=status.HTTP_201_CREATED)
 def create_supplier(payload: SupplierCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> SupplierRead:
-    return SupplierRead.model_validate(SupplierService(db).create_supplier(payload))
+    service = SupplierService(db)
+    supplier = service.create_supplier(payload, shop_id=current_user.shop_id)
+    return SupplierRead.model_validate(supplier).model_copy(update={"current_balance": service.repo.get_balance(supplier.id, shop_id=current_user.shop_id)})
 
 
 @router.get("/{supplier_id}", response_model=SupplierRead)
 def get_supplier(supplier_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> SupplierRead:
     try:
-        return SupplierRead.model_validate(SupplierService(db).get_supplier(supplier_id))
+        service = SupplierService(db)
+        supplier = service.get_supplier(supplier_id, shop_id=current_user.shop_id)
+        return SupplierRead.model_validate(supplier).model_copy(update={"current_balance": service.repo.get_balance(supplier.id, shop_id=current_user.shop_id)})
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -40,7 +45,9 @@ def get_supplier(supplier_id: str, db: Session = Depends(get_db), current_user=D
 @router.put("/{supplier_id}", response_model=SupplierRead)
 def update_supplier(supplier_id: str, payload: SupplierUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> SupplierRead:
     try:
-        return SupplierRead.model_validate(SupplierService(db).update_supplier(supplier_id, payload))
+        service = SupplierService(db)
+        supplier = service.update_supplier(supplier_id, payload, shop_id=current_user.shop_id)
+        return SupplierRead.model_validate(supplier).model_copy(update={"current_balance": service.repo.get_balance(supplier.id, shop_id=current_user.shop_id)})
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -48,7 +55,9 @@ def update_supplier(supplier_id: str, payload: SupplierUpdate, db: Session = Dep
 @router.post("/{supplier_id}/deactivate", response_model=SupplierRead)
 def deactivate_supplier(supplier_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> SupplierRead:
     try:
-        return SupplierRead.model_validate(SupplierService(db).deactivate_supplier(supplier_id))
+        service = SupplierService(db)
+        supplier = service.deactivate_supplier(supplier_id, shop_id=current_user.shop_id)
+        return SupplierRead.model_validate(supplier).model_copy(update={"current_balance": service.repo.get_balance(supplier.id, shop_id=current_user.shop_id)})
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -62,7 +71,7 @@ def get_supplier_ledger(
     current_user=Depends(get_current_user),
 ):
     try:
-        return SupplierService(db).get_ledger(supplier_id, from_date, to_date)
+        return SupplierService(db).get_ledger(supplier_id, from_date, to_date, shop_id=current_user.shop_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -70,6 +79,6 @@ def get_supplier_ledger(
 @router.get("/{supplier_id}/installments")
 def get_supplier_installments(supplier_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
-        return SupplierService(db).get_installments(supplier_id)
+        return SupplierService(db).get_installments(supplier_id, shop_id=current_user.shop_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc

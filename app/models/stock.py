@@ -13,6 +13,7 @@ class StockMovement(Base):
     __tablename__ = "stock_movements"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), nullable=False, index=True)
     movement_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     quantity: Mapped[Decimal] = mapped_column(DECIMAL(18, 3), nullable=False)

@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/customers", tags=["customers"])
 
 @router.get("", response_model=list[CustomerRead])
 def list_customers(
+    response: Response,
     search: str | None = Query(default=None),
     status: str | None = Query(default=None),
     page: int = 1,
@@ -30,20 +31,26 @@ def list_customers(
     current_user=Depends(get_current_user),
 ) -> list[CustomerRead]:
     repo = CustomerRepository(db)
-    items = repo.list(search=search or "", status=status or "", page=page, page_size=page_size)
-    return [CustomerRead.model_validate(item) for item in items]
+    items = repo.list(search=search or "", status=status or "", page=page, page_size=page_size, shop_id=current_user.shop_id)
+    total = repo.count(search=search or "", status=status or "", shop_id=current_user.shop_id)
+    response.headers["X-Total-Count"] = str(total)
+    service = CustomerService(db)
+    return [CustomerRead.model_validate(item).model_copy(update={"current_balance": service.repo.get_balance(item.id, shop_id=current_user.shop_id)}) for item in items]
 
 
 @router.post("", response_model=CustomerRead, status_code=status.HTTP_201_CREATED)
 def create_customer(payload: CustomerCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> CustomerRead:
     service = CustomerService(db)
-    return CustomerRead.model_validate(service.create_customer(payload))
+    customer = service.create_customer(payload, shop_id=current_user.shop_id)
+    return CustomerRead.model_validate(customer).model_copy(update={"current_balance": service.repo.get_balance(customer.id, shop_id=current_user.shop_id)})
 
 
 @router.get("/{customer_id}", response_model=CustomerRead)
 def get_customer(customer_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> CustomerRead:
     try:
-        return CustomerRead.model_validate(CustomerService(db).get_customer(customer_id))
+        service = CustomerService(db)
+        customer = service.get_customer(customer_id, shop_id=current_user.shop_id)
+        return CustomerRead.model_validate(customer).model_copy(update={"current_balance": service.repo.get_balance(customer.id, shop_id=current_user.shop_id)})
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -51,7 +58,9 @@ def get_customer(customer_id: str, db: Session = Depends(get_db), current_user=D
 @router.put("/{customer_id}", response_model=CustomerRead)
 def update_customer(customer_id: str, payload: CustomerUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> CustomerRead:
     try:
-        return CustomerRead.model_validate(CustomerService(db).update_customer(customer_id, payload))
+        service = CustomerService(db)
+        customer = service.update_customer(customer_id, payload, shop_id=current_user.shop_id)
+        return CustomerRead.model_validate(customer).model_copy(update={"current_balance": service.repo.get_balance(customer.id, shop_id=current_user.shop_id)})
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -59,7 +68,9 @@ def update_customer(customer_id: str, payload: CustomerUpdate, db: Session = Dep
 @router.post("/{customer_id}/deactivate", response_model=CustomerRead)
 def deactivate_customer(customer_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> CustomerRead:
     try:
-        return CustomerRead.model_validate(CustomerService(db).deactivate_customer(customer_id))
+        service = CustomerService(db)
+        customer = service.deactivate_customer(customer_id, shop_id=current_user.shop_id)
+        return CustomerRead.model_validate(customer).model_copy(update={"current_balance": service.repo.get_balance(customer.id, shop_id=current_user.shop_id)})
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -73,7 +84,7 @@ def get_customer_ledger(
     current_user=Depends(get_current_user),
 ):
     try:
-        return CustomerService(db).get_ledger(customer_id, from_date, to_date)
+        return CustomerService(db).get_ledger(customer_id, from_date, to_date, shop_id=current_user.shop_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
 
@@ -81,6 +92,6 @@ def get_customer_ledger(
 @router.get("/{customer_id}/installments")
 def get_customer_installments(customer_id: str, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
-        return CustomerService(db).get_installments(customer_id)
+        return CustomerService(db).get_installments(customer_id, shop_id=current_user.shop_id)
     except NotFoundError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc

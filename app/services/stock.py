@@ -25,6 +25,7 @@ class StockService:
         date_to: str | None = None,
         page: int = 1,
         page_size: int = 50,
+        shop_id: str | None = None,
     ) -> list[StockMovement]:
         return self.repo.list_movements(
             product_id=product_id,
@@ -33,16 +34,17 @@ class StockService:
             date_to=date_to,
             page=page,
             page_size=page_size,
+            shop_id=shop_id,
         )
 
-    def adjust_stock(self, payload: StockAdjustmentRequest) -> StockMovement:
+    def adjust_stock(self, payload: StockAdjustmentRequest, shop_id: str | None = None) -> StockMovement:
         if payload.quantity <= 0:
             raise ValidationError("Quantity must be greater than zero")
         if payload.direction not in {"increase", "decrease"}:
             raise ValidationError("Direction must be 'increase' or 'decrease'")
 
         try:
-            product = self.repo.get_product_for_update(payload.product_id)
+            product = self.repo.get_product_for_update(payload.product_id, shop_id=shop_id)
             if product is None:
                 raise NotFoundError("Product not found")
             if product.status == "archived":
@@ -71,6 +73,7 @@ class StockService:
                 note=payload.note,
                 reference_type="manual",
                 reference_id=None,
+                shop_id=shop_id,
             )
             self.db.commit()
             return movement
@@ -78,7 +81,7 @@ class StockService:
             self.db.rollback()
             raise
 
-    def adjust_stock_batch(self, payload: StockBatchAdjustmentRequest) -> list[StockMovement]:
+    def adjust_stock_batch(self, payload: StockBatchAdjustmentRequest, shop_id: str | None = None) -> list[StockMovement]:
         if not payload.adjustments:
             raise ValidationError("At least one adjustment is required")
 
@@ -96,7 +99,7 @@ class StockService:
                 if item.direction not in {"increase", "decrease"}:
                     raise ValidationError(f"Direction must be 'increase' or 'decrease' for product {item.product_id}")
 
-                product = self.repo.get_product_for_update(item.product_id)
+                product = self.repo.get_product_for_update(item.product_id, shop_id=shop_id)
                 if product is None:
                     raise NotFoundError(f"Product not found: {item.product_id}")
                 if product.status == "archived":
@@ -124,6 +127,7 @@ class StockService:
                     note=item.note,
                     reference_type="manual",
                     reference_id=None,
+                    shop_id=shop_id,
                 )
                 movements.append(movement)
 

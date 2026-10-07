@@ -1,17 +1,22 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from decimal import Decimal
 
 from sqlalchemy import DateTime, DECIMAL, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.sales import Sale
 
 
 class CustomerPayment(Base):
     __tablename__ = "customer_payments"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"), nullable=False)
     payment_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     amount: Mapped[Decimal] = mapped_column(DECIMAL(18, 2), nullable=False)
@@ -28,12 +33,14 @@ class CustomerPayment(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+    sale: Mapped["Sale | None"] = relationship("Sale", foreign_keys=[sale_id])
 
 
 class SupplierPayment(Base):
     __tablename__ = "supplier_payments"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     supplier_id: Mapped[str] = mapped_column(ForeignKey("suppliers.id"), nullable=False)
     payment_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     amount: Mapped[Decimal] = mapped_column(DECIMAL(18, 2), nullable=False)

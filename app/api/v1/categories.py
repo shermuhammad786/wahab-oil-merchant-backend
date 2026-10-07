@@ -17,14 +17,14 @@ def list_categories(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ) -> list[CategoryRead]:
-    items = CategoryRepository(db).list(search=search or "")
+    items = CategoryRepository(db).list(search=search or "", shop_id=current_user.shop_id)
     return [CategoryRead.model_validate(item) for item in items]
 
 
 @router.post("", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
 def create_category(payload: CategoryCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)) -> CategoryRead:
     try:
-        return CategoryRead.model_validate(CategoryService(db).create_category(payload))
+        return CategoryRead.model_validate(CategoryService(db).create_category(payload, shop_id=current_user.shop_id))
     except DuplicateEntryError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
     except ValidationError as exc:

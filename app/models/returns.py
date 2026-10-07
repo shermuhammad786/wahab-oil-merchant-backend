@@ -12,6 +12,7 @@ class SaleReturn(Base):
     __tablename__ = "sale_returns"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     sale_id: Mapped[str] = mapped_column(ForeignKey("sales.id"), nullable=False)
     customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), nullable=True)
     return_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -32,6 +33,7 @@ class SaleReturnItem(Base):
     __tablename__ = "sale_return_items"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     return_id: Mapped[str] = mapped_column(ForeignKey("sale_returns.id"), nullable=False)
     sale_item_id: Mapped[str] = mapped_column(String(64), nullable=False)
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), nullable=False)
@@ -45,6 +47,7 @@ class PurchaseReturn(Base):
     __tablename__ = "purchase_returns"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     purchase_id: Mapped[str] = mapped_column(ForeignKey("purchases.id"), nullable=False)
     supplier_id: Mapped[str] = mapped_column(ForeignKey("suppliers.id"), nullable=False)
     return_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
@@ -65,6 +68,7 @@ class PurchaseReturnItem(Base):
     __tablename__ = "purchase_return_items"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), nullable=False, index=True)
     return_id: Mapped[str] = mapped_column(ForeignKey("purchase_returns.id"), nullable=False)
     purchase_item_id: Mapped[str] = mapped_column(String(64), nullable=False)
     product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), nullable=False)

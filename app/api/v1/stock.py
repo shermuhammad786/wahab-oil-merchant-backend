@@ -5,10 +5,31 @@ from app.core.exceptions import AppException
 from app.core.security import get_current_user
 from app.db.session import get_db
 from app.models.user import User
+from app.models.stock import StockMovement
 from app.schemas.stock import StockAdjustmentRequest, StockBatchAdjustmentRequest, StockMovementRead
 from app.services.stock import StockService
 
 router = APIRouter(prefix="/stock", tags=["stock"])
+
+
+def read_movement(item: StockMovement) -> StockMovementRead:
+    return StockMovementRead(
+        id=item.id,
+        product_id=item.product_id,
+        product_name=getattr(item.product, "name", None),
+        movement_type=item.movement_type,
+        quantity=item.quantity,
+        previous_stock=item.previous_stock,
+        new_stock=item.new_stock,
+        reason=item.reason,
+        note=item.note,
+        reference_type=item.reference_type,
+        reference_id=item.reference_id,
+        created_at=item.created_at,
+        date=item.created_at,
+        type=item.movement_type,
+        balance=item.new_stock,
+    )
 
 
 @router.get("/movements", response_model=list[StockMovementRead])
@@ -29,25 +50,11 @@ def list_stock_movements(
         date_to=date_to,
         page=page,
         page_size=page_size,
+        shop_id=current_user.shop_id,
     )
     response: list[StockMovementRead] = []
     for item in items:
-        response.append(
-            StockMovementRead(
-                id=item.id,
-                product_id=item.product_id,
-                product_name=getattr(item.product, "name", None),
-                movement_type=item.movement_type,
-                quantity=item.quantity,
-                previous_stock=item.previous_stock,
-                new_stock=item.new_stock,
-                reason=item.reason,
-                note=item.note,
-                reference_type=item.reference_type,
-                reference_id=item.reference_id,
-                created_at=item.created_at,
-            )
-        )
+        response.append(read_movement(item))
     return response
 
 
@@ -58,7 +65,7 @@ def create_stock_adjustment(
     current_user: User = Depends(get_current_user),
 ) -> StockMovementRead:
     try:
-        item = StockService(db).adjust_stock(payload)
+        item = StockService(db).adjust_stock(payload, shop_id=current_user.shop_id)
         return StockMovementRead(
             id=item.id,
             product_id=item.product_id,
@@ -84,7 +91,7 @@ def create_batch_stock_adjustments(
     current_user: User = Depends(get_current_user),
 ) -> list[StockMovementRead]:
     try:
-        items = StockService(db).adjust_stock_batch(payload)
+        items = StockService(db).adjust_stock_batch(payload, shop_id=current_user.shop_id)
         return [
             StockMovementRead(
                 id=item.id,

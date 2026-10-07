@@ -11,12 +11,12 @@ class CategoryService:
         self.db = db
         self.repo = CategoryRepository(db)
 
-    def create_category(self, payload: CategoryCreate) -> Category:
+    def create_category(self, payload: CategoryCreate, shop_id: str | None = None) -> Category:
         name = (payload.name or "").strip()
         if not name:
             raise ValidationError("Category name is required")
         try:
-            return self.repo.create(name)
+            return self.repo.create(name, shop_id=shop_id)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
         except DuplicateEntryError:
